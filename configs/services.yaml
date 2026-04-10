@@ -1,0 +1,81 @@
+project:
+  name: "amazon-esci-search-platform"
+  default_profile: "dev"
+  repo_root: "."
+  minimum_free_disk_gb: 25
+
+raw_data:
+  root: "./esci-data-main/shopping_queries_dataset/data"
+  train_file: "esci_train.parquet"
+  test_file: "esci_test.parquet"
+  sources_csv: "./esci-data-main/shopping_queries_dataset/shopping_queries_dataset_sources.csv"
+
+paths:
+  processed_root: "./data/processed"
+  evaluation_root: "./data/evaluation"
+  cache_root: "./data/cache"
+  reports_root: "./reports"
+  mlruns_root: "./mlruns"
+
+profiles:
+  dev:
+    train_query_sample_size: 2000
+    test_query_sample_size: 500
+    top_k: 100
+    benchmark_queries: 100
+  full:
+    train_query_sample_size: null
+    test_query_sample_size: null
+    top_k: 100
+    benchmark_queries: 500
+
+filters:
+  locale: "us"
+  small_version: 1
+
+models:
+  embeddings:
+    name: "sentence-transformers/all-MiniLM-L6-v2"
+    dimension: 384
+    batch_size: 64
+  reranker:
+    name: "cross-encoder/ms-marco-MiniLM-L-6-v2"
+  ranking:
+    pointwise_objective: "reg:squarederror"
+    pairwise_objective: "rank:pairwise"
+    listwise_objective: "rank:ndcg"
+    selected_objective: "listwise"
+    selected_gain_mapping: "default"
+    online_candidate_depth: 60
+    online_vector_search_multiplier: 2
+
+opensearch:
+  url: "http://127.0.0.1:9200"
+  index_name: "esci-products-us"
+  request_timeout_seconds: 30
+  verify_certs: false
+  use_ssl: false
+
+latency_budgets_ms:
+  api_overhead: 30
+  retrieval: 50
+  feature_hydration_and_l2: 70
+  reranking: 100
+  end_to_end_p95_target: 250
+
+gain_mappings:
+  default:
+    Exact: 3.0
+    Substitute: 2.0
+    Complement: 1.0
+    Irrelevant: 0.0
+  strict:
+    Exact: 3.0
+    Substitute: 2.0
+    Complement: 0.0
+    Irrelevant: 0.0
+  amazon:
+    Exact: 1.0
+    Substitute: 0.1
+    Complement: 0.01
+    Irrelevant: 0.0
