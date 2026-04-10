@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ app_title }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='app.css') }}" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Search relevance demo and qualitative inspection UI</p>
+          <h1>{{ app_title }}</h1>
+          <p class="subtitle">{{ subtitle }}</p>
+        </div>
+        <div class="hero-badges">
+          <span class="pill pill-solid">local demo</span>
+          <span class="pill {{ 'pill-success' if opensearch_connected else 'pill-muted' }}">
+            {{ 'OpenSearch connected' if opensearch_connected else 'OpenSearch unavailable' }}
+          </span>
+        </div>
+      </header>
+
+      <main class="console-grid">
+        <section class="console-main">
+          <form id="search-form" class="search-panel">
+            <div class="query-row">
+              <label class="sr-only" for="query-input">Search query</label>
+              <input
+                id="query-input"
+                name="q"
+                type="text"
+                placeholder='Search products, e.g. "wireless mouse logitech"'
+                autocomplete="off"
+              />
+              <button type="submit" class="primary-button">Search</button>
+            </div>
+            <div class="control-row">
+              <label>
+                <span>Mode</span>
+                <select id="mode-select" name="mode">
+                  {% for option in mode_options %}
+                    <option value="{{ option.value }}">{{ option.label }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+              <label>
+                <span>Top-K</span>
+                <select id="top-k-select" name="k">
+                  {% for option in top_k_options %}
+                    <option value="{{ option }}">{{ option }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+              <label>
+                <span>Brand</span>
+                <input id="brand-input" name="brand" type="text" placeholder="Optional" />
+              </label>
+              <label>
+                <span>Color</span>
+                <input id="color-input" name="color" type="text" placeholder="Optional" />
+              </label>
+              <label class="toggle">
+                <input id="debug-toggle" type="checkbox" />
+                <span>Debug details</span>
+              </label>
+              <button type="button" id="compare-button" class="secondary-button">Compare modes</button>
+              <button type="button" id="reset-button" class="ghost-button">Reset</button>
+            </div>
+          </form>
+
+          <section id="summary-strip" class="summary-strip is-empty">
+            <div class="summary-empty">Run a search to see latency, request, and session stats.</div>
+          </section>
+
+          <div id="status-banner" class="status-banner" hidden></div>
+
+          <section class="results-shell">
+            <div class="section-head">
+              <div>
+                <h2>Results</h2>
+                <p id="results-subtitle">Thin UI for qualitative ranking inspection.</p>
+              </div>
+              <div id="results-meta" class="results-meta"></div>
+            </div>
+            <div id="loading-state" class="loading-state" hidden>Searching…</div>
+            <div id="empty-state" class="empty-state">
+              Enter a query and inspect how BM25, vector, hybrid, and LTR behave.
+            </div>
+            <div id="results-list" class="results-list"></div>
+          </section>
+        </section>
+
+        <aside class="console-side">
+          <section class="side-card">
+            <h3>Mode notes</h3>
+            <ul class="legend-list">
+              <li><strong>BM25</strong>: lexical baseline</li>
+              <li><strong>Vector</strong>: embedding retrieval</li>
+              <li><strong>Hybrid</strong>: default online path</li>
+              <li><strong>Hybrid + LTR</strong>: optimized local quality path</li>
+            </ul>
+          </section>
+
+          <section class="side-card">
+            <h3>Locked decisions</h3>
+            <div class="decision-grid">
+              <div>
+                <span class="label">Default online</span>
+                <strong>{{ locked_decisions.default_online }}</strong>
+              </div>
+              <div>
+                <span class="label">Final online LTR</span>
+                <strong>{{ locked_decisions.final_online_ltr }}</strong>
+              </div>
+              <div>
+                <span class="label">Best quality mode</span>
+                <strong>{{ locked_decisions.best_quality }}</strong>
+              </div>
+              <div>
+                <span class="label">Target P95</span>
+                <strong>{{ latency_target_ms }} ms</strong>
+              </div>
+            </div>
+          </section>
+
+          <section class="side-card">
+            <h3>Full-profile quality</h3>
+            <table class="mini-table">
+              <thead>
+                <tr>
+                  <th>System</th>
+                  <th>NDCG@10</th>
+                  <th>MRR</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in quality_rows %}
+                  <tr>
+                    <td>{{ row.label }}</td>
+                    <td>{{ row.ndcg_at_10 }}</td>
+                    <td>{{ row.mrr }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </section>
+
+          <section class="side-card">
+            <h3>Candidate-depth tradeoff</h3>
+            <table class="mini-table">
+              <thead>
+                <tr>
+                  <th>Depth</th>
+                  <th>NDCG@10</th>
+                  <th>Median P95</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in candidate_depth_rows %}
+                  <tr>
+                    <td>{{ row.depth }}</td>
+                    <td>{{ row.ndcg_at_10 }}</td>
+                    <td>{{ row.median_p95_ms }} ms</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </section>
+
+          <section class="side-card">
+            <h3>Session history</h3>
+            <div id="history-list" class="history-list"></div>
+          </section>
+        </aside>
+      </main>
+    </div>
+
+    <aside id="compare-drawer" class="compare-drawer" aria-hidden="true">
+      <div class="compare-head">
+        <div>
+          <p class="eyebrow">Optional compare drawer</p>
+          <h2>Mode comparison</h2>
+        </div>
+        <button type="button" id="close-compare" class="ghost-button">Close</button>
+      </div>
+      <p id="compare-caption" class="compare-caption">Compare top 5 results for the current query.</p>
+      <div id="compare-body" class="compare-body"></div>
+    </aside>
+
+    <script id="initial-state" type="application/json">{{ initial_state | tojson }}</script>
+    <script>
+      window.ESCI_UI_CONFIG = {
+        latencyTargetMs: {{ latency_target_ms }},
+        modeLabels: {
+          bm25: "BM25",
+          vector: "Vector",
+          hybrid: "Hybrid",
+          ltr: "Hybrid + LTR"
+        }
+      };
+    </script>
+    <script src="{{ url_for('static', path='app.js') }}" defer></script>
+  </body>
+</html>
