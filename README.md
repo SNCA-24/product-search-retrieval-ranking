@@ -2,7 +2,14 @@
 
 Local-first product search, retrieval, and ranking system built on the Amazon ESCI dataset, combining BM25, vector retrieval, hybrid fusion, learning-to-rank, offline evaluation, FastAPI serving, and a thin inspection UI for relevance analysis.
 
-**Tech stack:** Python · FastAPI · OpenSearch · sentence-transformers · XGBoost · MLflow · pandas · Docker Compose · pytest · GitHub Actions
+## Tech Stack Snapshot
+
+- **Backend / API:** Python 3.11/3.12, FastAPI, Uvicorn, Pydantic
+- **Search / Retrieval:** OpenSearch, BM25, vector search, reciprocal rank fusion
+- **ML / Ranking:** sentence-transformers, XGBoost, MLflow
+- **Data / Evaluation:** pandas, parquet, NDCG@10, MRR, Precision@10, Recall@50/100
+- **UI / Demo:** Jinja2, HTML, CSS, JavaScript
+- **Engineering:** Docker Compose, pytest, GitHub Actions
 
 ## Why This Project Exists
 
@@ -21,7 +28,6 @@ This project builds:
 - an XGBoost learning-to-rank workflow with feature generation and local MLflow tracking
 - a FastAPI service with `/search`, `/debug/search`, `/explain`, `/health`, and a root inspection UI
 - latency benchmarking and candidate-depth sweep scripts for local serving tradeoff analysis
-
 - a documented shipped-state decision: hybrid as the default online path, optimized online LTR as the richer mode, and cross-encoder reranking deferred
 
 Out of scope in the shipped repo:
@@ -324,7 +330,7 @@ python scripts/sweep_ltr_candidate_depth.py --profile full --depths 40 50 60 --l
 ## Repository Structure
 
 ```text
-amazon-esci-search-platform/
+product-search-retrieval-ranking/
 ├── assets/
 │   └── screenshots/
 ├── configs/
@@ -415,14 +421,20 @@ This repository does not claim ownership of the external datasets, services, mod
 
 ## Skills Demonstrated
 
+### Search / Ranking
 - Relevance engineering
-- Search system design
 - Information retrieval
 - Vector search
 - Reciprocal rank fusion
 - Learning-to-rank with XGBoost
-- Offline evaluation and benchmark analysis
-- Latency-aware system tuning
+
+### Evaluation / ML Systems
+- Offline ranking evaluation
+- Benchmark analysis
+- Latency-aware model serving
+- Candidate-depth tradeoff analysis
+
+### Engineering
 - FastAPI service design
 - OpenSearch indexing and local operations
 - Testable Python package structure
